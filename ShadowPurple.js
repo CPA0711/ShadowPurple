@@ -88,7 +88,7 @@ async function testUrl(url, count) {
       totalTime += time;
       if (res.ok) alive++; else dead++;
       const status = res.ok? `\x1b[32m✅ ${res.status}\x1b[0m` : `\x1b[33m⚠️ ${res.status}\x1b[0m`;
-      console.log(`[${i}/${count}] ${status} | ${method} | ${time}ms | ${url}`);
+      console.log(`[${i}/${count}] ${status} | ${method} | ${time}ms`);
     } catch (err) {
       const time = Date.now() - start;
       totalTime += time;
@@ -99,7 +99,7 @@ async function testUrl(url, count) {
     if (i < count) await delay(randomDelay());
   }
 
-  return { alive, dead, avgTime: Math.round(totalTime / count) };
+  return { alive, dead, avgTime: Math.round(totalTime / count), count };
 }
 
 async function testDuration(url, durationSec) {
@@ -156,7 +156,7 @@ function showBanner() {
   console.log('| |___| | (_) |_) | (_) | __/| |_| | ||_|');
   console.log(' \\____|_| |_|\\___/|.__/ \\___/|_| |_| \\__,_| |_(_)');
   console.log(' |_| ');
-  console.log(' v1.1 | Stealth URL Checker + Flooder');
+  console.log(' v1.2 | Stealth URL Checker + Flooder');
   console.log('\x1b[0m');
 }
 
@@ -165,43 +165,47 @@ function showResult(result, url) {
   console.log('\x1b[1m🌑 SHADOW PURPLE SUMMARY\x1b[0m');
   console.log('='.repeat(40));
   console.log(`Target : ${url}`);
-  console.log(`Total Requests : ${result.count || result.alive + result.dead}`);
+  console.log(`Total Requests : ${result.count}`);
   console.log(`ALIVE : \x1b[32m${result.alive}\x1b[0m | DEAD : \x1b[31m${result.dead}\x1b[0m`);
   console.log(`Avg Response : ${result.avgTime}ms`);
-  console.log(`Method : 70% GET / 30% POST`);
+  console.log(`Method : ${Math.round(GET_RATIO*100)}% GET / ${Math.round((1-GET_RATIO)*100)}% POST`);
   console.log('='.repeat(40) + '\n');
+}
+
+async function ask(question, defaultVal) {
+  const ans = await rl.question(`\x1b[35m${question} \x1b[0m`);
+  return ans.trim() === ''? defaultVal : ans.trim();
 }
 
 async function setup() {
   showBanner();
 
-  const urlInput = await rl.question('\x1b[35mTarget URL > \x1b[0m');
-  if (!urlInput.trim()) {
+  const urlInput = await ask('Target URL > ', '');
+  if (!urlInput) {
     console.log('URL kosong. Exit.');
     rl.close();
     return null;
   }
   const url = urlInput.startsWith('http')? urlInput : `https://${urlInput}`;
 
-  const mode = await rl.question('\x1b[35mMode [1] Jumlah Request / [2] Durasi Detik > \x1b[0m');
+  const mode = await ask('Mode [1] Jumlah Request / [2] Durasi Detik [1] > ', '1');
 
   if (mode === '2') {
     DURATION_MODE = true;
-    const dur = await rl.question('\x1b[35mDurasi dalam detik > \x1b[0m');
-    DURATION_SEC = parseInt(dur) || 60;
+    const dur = await ask('Durasi dalam detik [60] > ', '60');
+    DURATION_SEC = parseInt(dur);
   } else {
-    const req = await rl.question('\x1b[35mJumlah Request > \x1b[0m');
-    TOTAL_REQUESTS = parseInt(req) || 1;
+    const req = await ask('Jumlah Request [1] > ', '1'); // FIX: tambah > dan spasi
   }
 
-  const dMin = await rl.question('\x1b[35mDelay Min ms [1000] > \x1b[0m');
-  DELAY_MIN = parseInt(dMin) || 1000;
+  const dMin = await ask('Delay Min ms > ', '1000');
+  DELAY_MIN = parseInt(dMin);
 
-  const dMax = await rl.question('\x1b[35mDelay Max ms [5000] > \x1b[0m');
-  DELAY_MAX = parseInt(dMax) || 5000;
+  const dMax = await ask('Delay Max ms > ', '5000');
+  DELAY_MAX = parseInt(dMax);
 
-  const ratio = await rl.question('\x1b[35mRasio GET 0-1 [0.7] > \x1b[0m');
-  GET_RATIO = parseFloat(ratio) || 0.7;
+  const ratio = await ask('Rasio GET 0-1 [0.7] > ', '0.7');
+  GET_RATIO = parseFloat(ratio);
 
   return url;
 }
