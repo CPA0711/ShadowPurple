@@ -1,5 +1,3 @@
-### Upload ke GitHub:
-```bash
 git init
 git add ShadowPurple.js README.md
 git commit -m "Initial release v1.0"
