@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as readline from 'node:readline/promises';
-import { stdin as input, stdout as output } from 'node:stdin';
+import { stdin as input, stdout as output } from 'process'; 
 
 const rl = readline.createInterface({ input, output });
 
