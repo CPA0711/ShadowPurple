@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-- import { stdin as input, stdout as output } from 'node:stdin';
-+ import { stdin as input, stdout as output } from 'process';
-const rl = readline.createInterface({ input, output });
+import * as readline from 'node:readline/promises';
+import { stdin, stdout } from 'process';
+
+const rl = readline.createInterface({ input: stdin, output: stdout });
 
 // ShadowPurple v1.0 - Stealth URL Flooder
 const DELAY_MIN = 1000;
 const DELAY_MAX = 5000;
-const GET_RATIO = 0.7; // 70% GET, 30% POST
+const GET_RATIO = 0.7;
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
@@ -100,9 +101,9 @@ function showResult(result) {
 
 function showBanner() {
   console.log('\x1b[35m');
-  console.log(' ____ _ _ ____ _ ');
-  console.log(' / ___| |__ ___ _ __ ___ | _ \\ _ _ __ |');
-  console.log('| | | \'_ \\ / _ \\| \'_ \\ / _ \\| |_) | \'_ \\ |');
+  console.log(' ____ _ ____ _ ');
+  console.log(' / ___| |__ ___ _ __ ___ | _ \\ _ __ |');
+  console.log('| | \'_ \\ / _ \\| \'_ \\ / _ \\| |_) | \'_ \\ |');
   console.log('| |___| | (_) |_) | (_) | __/| |_| | ||_|');
   console.log(' \\____|_| |_|\\___/|.__/ \\___/|_| |_| \\__,_| |_(_)');
   console.log(' |_| ');
