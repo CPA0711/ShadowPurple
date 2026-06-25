@@ -9,7 +9,7 @@ const rl = readline.createInterface({ input: stdin, output: stdout });
 let DELAY_MIN = 1000;
 let DELAY_MAX = 5000;
 let GET_RATIO = 0.7;
-let DURATION_SEC = 60;
+let DURATION_SEC = 300;
 let MAX_REQUESTS = 0;
 let TARGET_HOST = 'target';
 
@@ -82,7 +82,7 @@ async function runTest(url) {
   const startTime = Date.now();
   const endTime = startTime + DURATION_SEC * 1000;
 
-  console.log(`\x1b[90m[Shadow] Running... Max: ${MAX_REQUESTS||'∞'} req | ${DURATION_SEC}s | Ctrl+C to stop\x1b[0m`);
+  console.log(`\x1b[90mShadow Purple Running... Max: ${MAX_REQUESTS||'∞'} req | ${DURATION_SEC}s | Ctrl+C to stop\x1b[0m`);
   console.log(`\x1b[90mColor: \x1b[32m<1s\x1b[0m | \x1b[33m1-2s\x1b[0m | \x1b[91m2-4s\x1b[0m | \x1b[31m>4s\x1b[0m\n`);
 
   while (true) {
