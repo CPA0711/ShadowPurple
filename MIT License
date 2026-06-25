@@ -1,0 +1,8 @@
+### Upload ke GitHub:
+```bash
+git init
+git add ShadowPurple.js README.md
+git commit -m "Initial release v1.0"
+git branch -M main
+git remote add origin https://github.com/CPA0711/ShadowPurple
+git push -u origin main
