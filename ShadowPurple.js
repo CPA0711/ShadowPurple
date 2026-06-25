@@ -175,7 +175,7 @@ async function setup() {
     TARGET_HOST = url.replace(/^https?:\/\//, '').split('/')[0];
   }
 
-  const dur = await ask('Durasi detik [60] > ', '60');
+  const dur = await ask('Durasi detik [300] > ', '300');
   DURATION_SEC = parseInt(dur);
 
   const req = await ask('Max Requests [0=unlimited] > ', '0');
