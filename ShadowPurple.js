@@ -135,7 +135,7 @@ function showBanner() {
   console.log(' ╔═╝║ ║╔═║╔═ ╔═║║║║  ╔═║║ ║╔═║╔═║║  ╔═╝');
   console.log(' ══║╔═║╔═║║ ║║ ║║║║  ╔═╝║ ║╔╔╝╔═╝║  ╔═╝');
   console.log(' ══╝╝ ╝╝ ╝══ ══╝══╝  ╝  ══╝╝ ╝╝  ══╝══╝');
-  console.log(' v1.0 CPA Stealth URL Flooder');
+  console.log('       CPA Stealth URL Flooder');
   console.log('\x1b[0m');
 }
 
