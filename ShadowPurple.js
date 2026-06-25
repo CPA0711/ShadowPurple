@@ -10,7 +10,7 @@ let DELAY_MIN = 1000;
 let DELAY_MAX = 5000;
 let GET_RATIO = 0.7;
 let DURATION_SEC = 60;
-let MAX_REQUESTS = 0; // 0 = unlimited
+let MAX_REQUESTS = 0;
 let TARGET_HOST = 'target';
 
 const USER_AGENTS = [
@@ -62,6 +62,18 @@ function randomDelay() {
   return Math.floor(Math.random() * (DELAY_MAX - DELAY_MIN + 1)) + DELAY_MIN;
 }
 
+function getTime() {
+  const now = new Date();
+  return now.toLocaleTimeString('id-ID', { hour12: false });
+}
+
+function colorTime(ms) {
+  if (ms < 1000) return `\x1b[32m${ms}ms\x1b[0m`; // hijau <1s
+  if (ms < 2000) return `\x1b[33m${ms}ms\x1b[0m`; // kuning 1-2s
+  if (ms < 4000) return `\x1b[91m${ms}ms\x1b[0m`; // merah muda 2-4s
+  return `\x1b[31m${ms}ms\x1b[0m`; // merah >4s
+}
+
 async function runTest(url) {
   let count = 0;
   let alive = 0;
@@ -70,23 +82,23 @@ async function runTest(url) {
   const startTime = Date.now();
   const endTime = startTime + DURATION_SEC * 1000;
 
-  console.log(`\x1b[90m[Shadow] Running... Max: ${MAX_REQUESTS||'∞'} req | ${DURATION_SEC}s | Ctrl+C to stop\x1b[0m\n`);
+  console.log(`\x1b[90m[Shadow] Running... Max: ${MAX_REQUESTS||'∞'} req | ${DURATION_SEC}s | Ctrl+C to stop\x1b[0m`);
+  console.log(`\x1b[90mColor: \x1b[32m<1s\x1b[0m | \x1b[33m1-2s\x1b[0m | \x1b[91m2-4s\x1b[0m | \x1b[31m>4s\x1b[0m\n`);
 
   while (true) {
-    // Stop kalau request limit kena
     if (MAX_REQUESTS > 0 && count >= MAX_REQUESTS) break;
-    // Stop kalau durasi habis
     if (Date.now() >= endTime) break;
 
     count++;
     const reqStart = Date.now();
     const ua = randomUA();
     const method = randomMethod();
+    const timestamp = getTime();
 
     const options = {
       method: method,
       headers: { 'User-Agent': ua },
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(5000)
     };
 
     if (method === 'POST') {
@@ -101,15 +113,14 @@ async function runTest(url) {
       if (res.ok) alive++; else dead++;
       const status = res.ok? `\x1b[32m✅ ${res.status}\x1b[0m` : `\x1b[33m⚠️ ${res.status}\x1b[0m`;
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-      console.log(`[${TARGET_HOST}] ${status} | ${method} | ${time}ms | ${elapsed}s`);
+      console.log(`[${timestamp}] [${TARGET_HOST}] ${status} | ${method} | ${colorTime(time)} | ${elapsed}s`);
     } catch (err) {
       const time = Date.now() - reqStart;
       totalTime += time;
       dead++;
-      console.log(`[${TARGET_HOST}] \x1b[31m❌ FAIL\x1b[0m | ${method} | ${time}ms | ${err.name}`);
+      console.log(`[${timestamp}] [${TARGET_HOST}] \x1b[31m❌ FAIL\x1b[0m | ${method} | \x1b[31m${time}ms\x1b[0m | ${err.name}`);
     }
 
-    // Delay kalau masih ada waktu + request belum max
     if ((MAX_REQUESTS === 0 || count < MAX_REQUESTS) && Date.now() < endTime) {
       await delay(randomDelay());
     }
@@ -127,7 +138,7 @@ function showBanner() {
   console.log('| |___| | (_) |_) | (_) | __/| |_| | ||_|');
   console.log(' \\____|_| |_|\\___/|.__/ \\___/|_| |_| \\__,_| |_(_)');
   console.log(' |_| ');
-  console.log(' v1.0 | Stealth URL Flooder');
+  console.log(' v1.8 | Stealth URL Checker + Color');
   console.log('\x1b[0m');
 }
 
@@ -139,7 +150,7 @@ function showResult(result, url) {
   console.log(`Limit : ${MAX_REQUESTS||'Unlimited'} req | ${DURATION_SEC}s`);
   console.log(`Total Requests : ${result.count}`);
   console.log(`ALIVE : \x1b[32m${result.alive}\x1b[0m | DEAD : \x1b[31m${result.dead}\x1b[0m`);
-  console.log(`Avg Response : ${result.avgTime}ms`);
+  console.log(`Avg Response : ${colorTime(result.avgTime)}`);
   console.log(`Actual Duration : ${result.duration}s`);
   console.log(`Method : ${Math.round(GET_RATIO*100)}% GET / ${Math.round((1-GET_RATIO)*100)}% POST`);
   console.log('='.repeat(40) + '\n');
